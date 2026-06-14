@@ -2,7 +2,7 @@
 ## Análisis de Datos con Python + Identificación de Tipos de Datos
 ### Big Data (DD283) | Universidad Autónoma del Perú
 
-**Nombre(s)**: _______________________________________________  
+**Nombre(s)**:Omar Rivera Castillo  
 **Grupo**: _______________________________________________  
 **Duración estimada**: 90 minutos  
 **Modalidad**: Individual (en casa, en tu laptop)  
