@@ -1,0 +1,11 @@
+id_producto,nombre,categoria,precio,stock
+1,Laptop HP 15,Tecnologia,2500.0,12
+2,Mouse Logitech,Accesorios,65.9,150
+3,Teclado mecanico,Accesorios,189.9,80
+4,Monitor Samsung 24,Tecnologia,750.0,35
+5,Audifonos Sony,Audio,320.0,60
+6,Silla ergonomica,Mobiliario,890.0,20
+7,Webcam Logitech,Accesorios,240.0,45
+8,Disco SSD 1TB,Almacenamiento,410.0,90
+9,Router TP-Link,Redes,155.0,70
+10,Impresora Epson,Oficina,680.0,25
