@@ -66,12 +66,12 @@ Diseña la arquitectura completa de datos para Yape. Para cada componente del si
 
 | Componente del sistema | Tecnología elegida | Tipo BD/Herramienta | Por qué esta tecnología para Yape (2 líneas) |
 |------------------------|-------------------|--------------------|--------------------------------------------|
-| Core de pagos (3.2M transacciones/día, no puede perder dinero) | | | |
-| Sesiones de login activo (15M usuarios, expira en 30 min) | | | |
-| Perfil del comerciante (bodega, restaurante, taxi — atributos distintos) | | | |
-| Historial de transacciones para análisis (18 TB/año) | | | |
-| Red de detección de fraude (ciclo A→B→C→A en < 5 min) | | | |
-| Dashboard ejecutivo (top 10 distritos, actualización diaria) | | | |
+| Core de pagos (3.2M transacciones/día, no puede perder dinero) | CockroachDB | NewSQL | Garantiza transacciones ACID estrictas para no perder dinero y escala de forma horizontal automáticamente. |
+| Sesiones de login activo (15M usuarios, expira en 30 min) | Redis | NoSQL (Clave-Valor) | Guarda los datos en memoria RAM ofreciendo respuestas en milisegundos para soportar millones de accesos. |
+| Perfil del comerciante (bodega, restaurante, taxi — atributos distintos) | MongoDB | NoSQL (Documental) | Permite un esquema flexible en formato JSON; ideal porque una bodega y un taxi tienen datos totalmente diferentes. |
+| Historial de transacciones para análisis (18 TB/año) | Databricks / Spark | Lakehouse / Big Data | Procesa terabytes de datos de forma distribuida para analítica avanzada usando almacenamiento masivo y económico. |
+| Red de detección de fraude (ciclo A→B→C→A en < 5 min) | Neo4j | NoSQL (Grafos) | Diseñada para recorrer relaciones complejas y detectar patrones circulares de lavado de dinero en tiempo real. |
+| Dashboard ejecutivo (top 10 distritos, actualización diaria) | Power BI / Matplotlib | BI / Visualización | Permite conectar los datos limpios de la capa Gold y transformarlos en gráficos interactivos para los directivos. |
 
 ---
 
@@ -79,10 +79,10 @@ Diseña la arquitectura completa de datos para Yape. Para cada componente del si
 
 Para los siguientes 2 componentes de Yape, indica la combinación CAP correcta (CP, AP o CA) y explica qué propiedad sacrifica y por qué ese sacrificio es aceptable o inaceptable:
 
-| Componente | Combinación CAP | Propiedad sacrificada | ¿Por qué ese sacrificio es correcto o incorrecto para este caso? |
-|------------|----------------|----------------------|----------------------------------------------------------------|
-| Core de pagos (débito/crédito de saldos) | | | |
-| Historial "mis últimas 50 transacciones" | | | |
+| *Componente* | *Combinación CAP* | *Propiedad sacrificada* | *¿Por qué ese sacrificio es correcto o incorrecto para este caso?* |
+| ----- | ----- | ----- | ----- |
+| Core de pagos (débito/crédito de saldos) | CP | Disponibilidad | Es correcto. En transacciones de dinero, la Consistencia es prioritaria. Si hay una falla de red, es preferible bloquear temporalmente el sistema antes que permitir saldos erróneos o duplicados. |
+| Historial "mis últimas 50 transacciones" | AP | Consistencia estricta | Es correcto. Para el usuario es más importante que la app responda rápido y muestre datos (Disponibilidad). Una consistencia eventual es aceptable aquí; no importa si el historial tarda unos minutos en actualizarse. |
 
 ---
 
@@ -90,11 +90,11 @@ Para los siguientes 2 componentes de Yape, indica la combinación CAP correcta (
 
 El equipo de Yape evalúa migrar el core de pagos a **CockroachDB** (NewSQL). Responde:
 
-a) ¿Qué limitación de Oracle resuelve CockroachDB al escalar de 15M a 50M usuarios?
+* **a) ¿Qué limitación de Oracle resuelve CockroachDB al escalar de 15M a 50M usuarios?:** Oracle escala principalmente de forma *vertical* (requiere un servidor más grande, costoso y genera un punto único de falla). CockroachDB resuelve esto escalando de forma *horizontal* (permite añadir nodos de servidores estándar en la nube de manera ilimitada para soportar el crecimiento masivo de usuarios sin detener el sistema).
 
-b) ¿Por qué MongoDB NO puede reemplazar a Oracle para el procesamiento de pagos aunque también escala horizontalmente?
+* **b) ¿Por qué MongoDB NO puede reemplazar a Oracle para el procesamiento de pagos aunque también escala horizontalmente?:** Porque el procesamiento de pagos requiere transacciones financieras con consistencia estricta en múltiples tablas o nodos distribuidos. Aunque MongoDB maneja transacciones, no fue diseñado nativamente desde su arquitectura para garantizar el cumplimiento estricta de las propiedades ACID a escala global distribuida con el nivel de seguridad financiera que ofrece un motor NewSQL.
 
-c) ¿Qué mecanismo técnico usa CockroachDB para mantener ACID en múltiples nodos distribuidos? (1 término técnico es suficiente)
+* **c) ¿Qué mecanismo técnico usa CockroachDB para mantener ACID en múltiples nodos distribuidos?:** Usa el protocolo de consenso **Raft** (para la replicación de datos y consistencia entre los nodos).
 
 ---
 
@@ -161,19 +161,19 @@ df_bronze.show(5)
 df_bronze = spark.read.parquet("/FileStore/yape/bronze/transacciones")
 
 df_silver = df_bronze \
-    .filter(df_bronze.estado == ___) \
-    .filter(df_bronze.monto_soles > ___) \
+    .filter(df_bronze.estado == "completadas") \
+    .filter(df_bronze.monto_soles > 0) \
     .withColumn("categoria_monto",
         F.when(F.col("monto_soles") < 20, "micro")
          .when(F.col("monto_soles") < 100, "medio")
-         .otherwise(___)) \
+         .otherwise("alto")) \
     .withColumn("es_hora_pico",
         F.when(F.col("hora").between("12:00", "14:00"), True)
-         .when(F.col("hora").between("18:00", ___), True)
+         .when(F.col("hora").between("18:00", "22:00"), True)
          .otherwise(False)) \
     .withColumn("comision_yape",
         F.when(F.col("tipo") == "persona_a_comercio",
-               F.round(F.col("monto_soles") * ___, 2))
+               F.round(F.col("monto_soles") * 0.015, 2))
          .otherwise(0.0))
 
 df_silver.write.mode("overwrite").parquet("/FileStore/yape/silver/transacciones_limpias")
@@ -211,8 +211,8 @@ gold_distritos = spark.sql("""
         ROUND(AVG(monto_soles), 2)        AS ticket_promedio,
         SUM(CASE WHEN es_comercio THEN ___ ELSE 0 END) AS transacciones_comercio
     FROM transacciones
-    GROUP BY ___
-    ORDER BY ___ DESC
+    GROUP BY distrito_origen
+    ORDER BY total_transacciones DESC
     LIMIT 5
 """)
 
@@ -223,7 +223,7 @@ gold_comisiones = spark.sql("""
         COUNT(*)                          AS num_transacciones,
         ROUND(SUM(comision_yape), 2)      AS ingresos_yape_soles
     FROM transacciones
-    WHERE ___
+    WHERE comision_yape > 0
     GROUP BY SUBSTRING(hora, 1, 2)
     ORDER BY ingresos_yape_soles DESC
 """)
@@ -297,6 +297,32 @@ print("✅ Dashboard guardado en /FileStore/yape/gold/dashboard_yape.png")
 ## PARTE C — MONGODB ATLAS (5 puntos)
 ### *Implementación obligatoria en Atlas M0 — evidencia en screenshot y video*
 
+#### 1. Justificación del Modelo de Datos (Embebido vs. Referenciado)
+Para almacenar las transacciones de Yape en MongoDB, se optó por un **Modelo de Datos Embebido (Denormalizado)**.
+
+* **Justificación:** Las consultas más frecuentes en una aplicación de pagos móviles exigen leer el detalle completo de una transacción de forma atómica y con latencias de milisegundos (quién envió, quién recibió, el monto y el comercio). Si usáramos un modelo referenciado (estilo relacional), MongoDB tendría que realizar operaciones de `$lookup` (JOINs) en tiempo de ejecución cruzando múltiples colecciones distribuidas, lo que degradaría el rendimiento bajo millones de usuarios concurrentes. Al embeber el `usuario_origen` y el `comercio_destino` en el mismo documento, la lectura es directa, veloz y altamente escalable.
+
+#### 2. Diseño del Esquema JSON (Documento de Ejemplo Real)
+A continuación, se define el esquema estructurado en formato JSON/BSON que representa fielmente una transacción del ecosistema Yape, aplicando tipos de datos nativos enriquecidos para auditoría y precisión financiera:
+
+```json
+{
+  "id_transaccion": "YP0000001",
+  "fecha": {"$date": "2025-01-01T06:25:00Z"},
+  "monto_soles": {"$numberDecimal": "35.47"},
+  "tipo": "persona_a_persona",
+  "estado": "completada",
+  "usuario_origen": {
+    "id_usuario": "USR9055",
+    "celular": "987654321",
+    "distrito": "Surco"
+  },
+  "comercio_destino": {
+    "id_comercio": "COM4412",
+    "nombre_comercio": "Bodega Don Pepe",
+    "rubro": "Abarrotes"
+  }
+}
 ---
 
 ### PREGUNTA 3 — Base de Datos NoSQL de Comerciantes Yape en Atlas (5 puntos)
@@ -305,7 +331,7 @@ print("✅ Dashboard guardado en /FileStore/yape/gold/dashboard_yape.png")
 
 ---
 
-**PASO 1 — Conectar a Atlas desde Google Colab o tu local (ejecutar primero):**
+## PASO 1 — Conectar a Atlas desde Google Colab o tu local (ejecutar primero):**
 
 ```python
 # ============================================================
@@ -475,6 +501,53 @@ bodegas_farmacias = list(comerciantes.find(
 for c in bodegas_farmacias:
     print(f"  → [{c['tipo']}] {c['nombre_comercio']}")
 ```
+## PASO 4 — Aggregation Pipeline (3.3 — 1.5 pts):
+# ============================================================
+# ▶ TU TURNO: Completa el pipeline de facturación por tipo
+# Objetivo: reporte para el equipo comercial de Yape
+# ============================================================
+
+pipeline_reporte = [
+# Paso 1: Solo comerciantes activos en Lima
+    {"$match": {"yape_activo": True, "departamento": "Lima"}},
+    
+    # Paso 2: Agrupar por tipo de comercio
+    {"$group": {
+        "_id": "$tipo",
+        "total_comercios":     {"$sum": 1},
+        "facturacion_total":   {"$sum": "$monto_mensual_soles"},
+        "calificacion_prom":   {"$avg": "$calificacion"},
+        "con_delivery":        {"$sum": {"$cond": ["$acepta_delivery", 1, 0]}}
+    }},
+    
+    # Paso 3: Ordenar por facturación total descendente
+    {"$sort": {"facturacion_total": -1}},
+    
+    # Paso 4: Formatear la salida
+    {"$project": {
+        "tipo_comercio":    "$_id",
+        "total_comercios":  1,
+        "facturacion_total": 1,
+        "calificacion_prom": {"$round": ["$calificacion_prom", 1]},
+        "con_delivery":     1,
+        "_id": 0
+    }}
+]
+
+print("📊 REPORTE COMERCIAL YAPE — FACTURACIÓN POR TIPO:")
+print(f"{'TIPO':<20} {'COMERCIOS':>9} {'FACTURACIÓN/MES':>16} {'RATING':>7} {'C/DELIVERY':>11}")
+print("-" * 67)
+for r in comerciantes.aggregate(pipeline_reporte):
+    print(f"{r['tipo_comercio']:<20} {r['total_comercios']:>9} "
+          f"S/{r['facturacion_total']:>13,.0f} {r['calificacion_prom']:>7} "
+          f"{r['con_delivery']:>11}")
+
+
+
+##### Consulta A: Filtrar comerciantes con calificación mayor o igual a 4.5
+* **Filtro (MQL):**
+```json
+{ "calificacion": { "$gte": 4.5 } }
 
 ---
 
