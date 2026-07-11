@@ -6,12 +6,12 @@
 
 | Campo | Detalle |
 |-------|---------|
-| **Nombre del estudiante** | ______________________________________________ |
-| **Código** | ______________________________________________ |
-| **Fecha de entrega** | ______________________________________________ |
+| **Nombre del estudiante** | JUNIOR EMERZON ORTIZ ANDRADE |
+| **Código** | 2221895332 |
+| **Fecha de entrega** | 11/07/2026 |
 | **Tiempo estimado** | 2 horas |
 | **Modalidad** | Individual |
-| **Entorno** | Databricks Community Edition (principal) · Google Colab (alternativa) |
+| **Entorno** | Google Colab (PySpark 3.5) |
 
 ---
 
@@ -76,6 +76,7 @@ print(f"✅ Spark {spark.version} listo en Colab")
 ```python
 # ============================================================
 # CELDA 1: Dataset de 10,000 viajes TaxiApp Lima
+# (Adaptado para Colab: ruta local en vez de /FileStore/)
 # ============================================================
 import numpy as np
 import pandas as pd
@@ -105,7 +106,7 @@ data = {
     "duracion_min":  np.random.randint(5, 120, N).tolist(),
     "tarifa_soles":  np.round(np.random.uniform(7, 95, N), 2).tolist(),
     "propina_soles": np.round(np.random.choice(
-                        [0, 0, 0, 2, 5, 10], N, p=[.5, .1, .1, .15, .1, .05]), 2).tolist(),
+                        [0, 0, 0, 2, 5, 10], N, p=[.5, .1, .1, .15, .1, .05]), 2).astype(float).tolist(),
     "metodo_pago":   np.random.choice(metodos, N, p=[.25, .40, .25, .10]).tolist(),
     "id_conductor":  [f"CON{np.random.randint(1, 200):04d}" for _ in range(N)],
     "rating":        np.round(np.random.normal(4.15, 0.55, N).clip(1, 5), 1).tolist(),
@@ -130,13 +131,17 @@ schema = StructType([
 
 records = list(zip(*data.values()))
 df_bronze = spark.createDataFrame(records, schema)
-df_bronze.write.mode("overwrite").parquet("/FileStore/taxi_lima/bronze/viajes")
+
+# 🔧 ADAPTADO PARA COLAB: ruta local en vez de /FileStore/
+df_bronze.write.mode("overwrite").parquet("taxi_lima/bronze/viajes")
 
 print(f"✅ Bronze layer: {df_bronze.count():,} viajes guardados")
 print(f"   Columnas: {len(df_bronze.columns)}")
 df_bronze.show(5)
 df_bronze.printSchema()
 ```
+
+![Celda 1: Bronze layer con 10,000 viajes y 13 columnas](screenshots/celda1_bronze_output.png)
 
 ---
 
@@ -145,8 +150,9 @@ df_bronze.printSchema()
 ```python
 # ============================================================
 # CELDA 2: Exploración inicial — conocer los datos antes de limpiar
+# (Adaptado para Colab: ruta local)
 # ============================================================
-df = spark.read.parquet("/FileStore/taxi_lima/bronze/viajes")
+df = spark.read.parquet("taxi_lima/bronze/viajes")
 
 # Estadísticas básicas
 print("=== ESTADÍSTICAS DESCRIPTIVAS ===")
@@ -171,6 +177,7 @@ df.groupBy("turno").count().orderBy("count", ascending=False).show()
 ```python
 # Escribe tu respuesta como comentario:
 # R1: 
+La distribución fue: 87.7% completados (8,767), 10.2% cancelados (1,017) y 2.2% incidentes (216). Solo los completados generan ingresos, así que el 12.4% restante es demanda no monetizada. El 2.2% de incidentes es el más costoso: además de no facturar, puede implicar reembolsos, soporte y daño reputacional, afectando el ingreso neto más de lo que sugiere su porcentaje. Reducir cancelaciones e incidentes es una palanca directa de rentabilidad.
 ```
 
 ---
@@ -182,54 +189,53 @@ df.groupBy("turno").count().orderBy("count", ascending=False).show()
 ```python
 # ============================================================
 # CELDA 3: Silver — datos limpios y enriquecidos
-# COMPLETA los ___ con la lógica indicada en los comentarios
+# (Adaptado para Colab: rutas locales)
 # ============================================================
-df_bronze = spark.read.parquet("/FileStore/taxi_lima/bronze/viajes")
+df_bronze = spark.read.parquet("taxi_lima/bronze/viajes")
 
 df_silver = (
     df_bronze
-    # Filtro 1: solo viajes completados (excluir cancelados e incidentes)
-    .filter(F.col("estado") == ___)
-    
-    # Filtro 2: distancia mínima válida (> 0.5 km) y tarifa mínima (> 0)
-    .filter((F.col("distancia_km") > ___) & (F.col("tarifa_soles") > ___))
-    
-    # Columna nueva: ingreso total del conductor (tarifa + propina)
+    # Filtro 1: solo viajes completados
+    .filter(F.col("estado") == "completado")
+
+    # Filtro 2: distancia > 0.5 km y tarifa > 0
+    .filter((F.col("distancia_km") > 0.5) & (F.col("tarifa_soles") > 0))
+
+    # Ingreso total del conductor (tarifa + propina)
     .withColumn("ingreso_total",
-        F.round(F.col("___") + F.col("___"), 2))
-    
-    # Columna nueva: comisión de TaxiApp (20% de la tarifa, no de la propina)
+        F.round(F.col("tarifa_soles") + F.col("propina_soles"), 2))
+
+    # Comisión de TaxiApp (20% de la tarifa)
     .withColumn("comision_taxiapp",
-        F.round(F.col("tarifa_soles") * ___, 2))
-    
-    # Columna nueva: ingreso neto del conductor (ingreso_total - comisión)
+        F.round(F.col("tarifa_soles") * 0.20, 2))
+
+    # Ingreso neto del conductor (ingreso_total - comisión)
     .withColumn("ingreso_neto_conductor",
         F.round(F.col("ingreso_total") - F.col("comision_taxiapp"), 2))
-    
-    # Columna nueva: precio por km (tarifa / distancia)
+
+    # Precio por km (tarifa / distancia)
     .withColumn("precio_por_km",
         F.round(F.col("tarifa_soles") / F.col("distancia_km"), 2))
-    
-    # Columna nueva: categoría de viaje por distancia
+
+    # Categoría de viaje por distancia
     .withColumn("categoria_viaje",
         F.when(F.col("distancia_km") < 5,  "corto")
          .when(F.col("distancia_km") < 15, "medio")
-         .otherwise(___))
-    
-    # Columna nueva: es viaje rentable para el conductor (ingreso_neto > S/30)
+         .otherwise("largo"))
+
+    # Es rentable (ingreso_neto > S/30)
     .withColumn("es_rentable",
-        F.col("ingreso_neto_conductor") > ___)
+        F.col("ingreso_neto_conductor") > 30)
 )
 
-df_silver.write.mode("overwrite").parquet("/FileStore/taxi_lima/silver/viajes_limpios")
+df_silver.write.mode("overwrite").parquet("taxi_lima/silver/viajes_limpios")
 
 total_silver = df_silver.count()
 total_bronze = df_bronze.count()
 print(f"✅ Silver layer: {total_silver:,} viajes válidos")
 print(f"   Eliminados: {total_bronze - total_silver:,} ({(total_bronze - total_silver)/total_bronze*100:.1f}%)")
 
-# Verificar nuevas columnas
-df_silver.select("id_viaje", "tarifa_soles", "propina_soles", 
+df_silver.select("id_viaje", "tarifa_soles", "propina_soles",
                  "ingreso_total", "comision_taxiapp", "ingreso_neto_conductor",
                  "precio_por_km", "categoria_viaje", "es_rentable").show(5)
 ```
@@ -245,26 +251,29 @@ df_silver.select("id_viaje", "tarifa_soles", "propina_soles",
 
 ---
 
+![Celda 3: Silver layer - 8,767 viajes válidos con columnas enriquecidas](screenshots/celda3_silver_output.png)
+
 ### Celda 4 — Gold layer: métricas de negocio con Spark SQL (COMPLETAR los `___`)
 
 ```python
 # ============================================================
 # CELDA 4: Gold — métricas para el dashboard ejecutivo
+# (Adaptado para Colab: rutas locales)
 # ============================================================
-df_silver = spark.read.parquet("/FileStore/taxi_lima/silver/viajes_limpios")
+df_silver = spark.read.parquet("taxi_lima/silver/viajes_limpios")
 df_silver.createOrReplaceTempView("viajes")
 
 # ── GOLD 1: Top 10 rutas más rentables ────────────────────────
 gold_rutas = spark.sql("""
-    SELECT 
+    SELECT
         CONCAT(origen, ' → ', destino)     AS ruta,
         COUNT(*)                            AS total_viajes,
         ROUND(AVG(tarifa_soles), 2)         AS tarifa_promedio,
         ROUND(AVG(precio_por_km), 2)        AS precio_km_prom,
         ROUND(SUM(comision_taxiapp), 2)     AS ingresos_taxiapp
     FROM viajes
-    GROUP BY ___, ___
-    HAVING COUNT(*) >= ___
+    GROUP BY origen, destino
+    HAVING COUNT(*) >= 3
     ORDER BY ingresos_taxiapp DESC
     LIMIT 10
 """)
@@ -277,10 +286,10 @@ gold_conductores = spark.sql("""
         ROUND(AVG(rating), 2)                           AS rating_prom,
         ROUND(SUM(ingreso_neto_conductor), 2)           AS ingresos_netos,
         ROUND(AVG(ingreso_neto_conductor), 2)           AS ingreso_prom_viaje,
-        SUM(CASE WHEN es_rentable THEN 1 ELSE 0 END)   AS viajes_rentables
+        SUM(CASE WHEN es_rentable THEN 1 ELSE 0 END)    AS viajes_rentables
     FROM viajes
-    GROUP BY ___
-    HAVING AVG(rating) > ___ AND COUNT(*) > ___
+    GROUP BY id_conductor
+    HAVING AVG(rating) > 4.5 AND COUNT(*) > 20
     ORDER BY rating_prom DESC, ingresos_netos DESC
     LIMIT 10
 """)
@@ -294,14 +303,14 @@ gold_turno_pago = spark.sql("""
         ROUND(SUM(comision_taxiapp), 2) AS ingresos_taxiapp,
         ROUND(AVG(rating), 2)           AS rating_prom
     FROM viajes
-    GROUP BY ___, ___
+    GROUP BY turno, metodo_pago
     ORDER BY ingresos_taxiapp DESC
 """)
 
 # Guardar en Gold layer
-gold_rutas.write.mode("overwrite").parquet("/FileStore/taxi_lima/gold/top_rutas")
-gold_conductores.write.mode("overwrite").parquet("/FileStore/taxi_lima/gold/conductores_estrella")
-gold_turno_pago.write.mode("overwrite").parquet("/FileStore/taxi_lima/gold/ingresos_turno_pago")
+gold_rutas.write.mode("overwrite").parquet("taxi_lima/gold/top_rutas")
+gold_conductores.write.mode("overwrite").parquet("taxi_lima/gold/conductores_estrella")
+gold_turno_pago.write.mode("overwrite").parquet("taxi_lima/gold/ingresos_turno_pago")
 
 print("📊 TOP 10 RUTAS MÁS RENTABLES PARA TAXIAPP:")
 gold_rutas.show(truncate=False)
@@ -311,6 +320,26 @@ gold_conductores.show()
 
 print("\n💰 INGRESOS TAXIAPP POR TURNO Y MÉTODO DE PAGO:")
 gold_turno_pago.show(20)
+
+# ── DIAGNÓSTICO: ¿por qué GOLD 2 salió vacía? ──────────────────
+# Ningún conductor supera rating 4.5 (el rating se generó con media 4.15).
+# Mostramos los mejores conductores DISPONIBLES con umbral realista (rating > 4.2)
+print("\n🔍 DIAGNÓSTICO — Mejores conductores disponibles (rating > 4.2, > 20 viajes):")
+mejores_disponibles = spark.sql("""
+    SELECT
+        id_conductor,
+        COUNT(*)                              AS total_viajes,
+        ROUND(AVG(rating), 2)                 AS rating_prom,
+        ROUND(SUM(ingreso_neto_conductor), 2) AS ingresos_netos
+    FROM viajes
+    GROUP BY id_conductor
+    HAVING AVG(rating) > 4.2 AND COUNT(*) > 20
+    ORDER BY rating_prom DESC, ingresos_netos DESC
+    LIMIT 10
+""")
+mejores_disponibles.show()
+print(f"Conductores con rating > 4.5 (umbral original): 0")
+print(f"Conductores con rating > 4.2 (umbral realista): {mejores_disponibles.count()}")
 ```
 
 **Valores para los `___` de Gold 1:**
@@ -327,19 +356,28 @@ gold_turno_pago.show(20)
 
 ---
 
+![Celda 4: Gold - Top 10 rutas más rentables (Surco → Comas lidera)](screenshots/celda4_gold_rutas.png)
+
+![Celda 4: Gold - Conductores estrella (tabla vacía) + diagnóstico con umbral realista](screenshots/celda4_gold_conductores.png)
+
 ### Celda 5 — Visualización del dashboard
 
 ```python
 # ============================================================
 # CELDA 5: Dashboard ejecutivo — 3 gráficos
+# (Adaptado para Colab: rutas locales)
 # ============================================================
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
+import os
 
-gold_rutas = spark.read.parquet("/FileStore/taxi_lima/gold/top_rutas").toPandas()
-gold_turno = spark.read.parquet("/FileStore/taxi_lima/gold/ingresos_turno_pago").toPandas()
-gold_cond  = spark.read.parquet("/FileStore/taxi_lima/gold/conductores_estrella").toPandas()
+# Crear carpeta para guardar el dashboard
+os.makedirs("taxi_lima/gold", exist_ok=True)
+
+gold_rutas = spark.read.parquet("taxi_lima/gold/top_rutas").toPandas()
+gold_turno = spark.read.parquet("taxi_lima/gold/ingresos_turno_pago").toPandas()
+gold_cond  = spark.read.parquet("taxi_lima/gold/conductores_estrella").toPandas()
 
 fig, axes = plt.subplots(1, 3, figsize=(18, 6))
 fig.suptitle("Dashboard Ejecutivo — TaxiApp Perú | Septiembre 2025",
@@ -368,13 +406,17 @@ axes[1].set_ylabel("Ingresos TaxiApp (S/)")
 axes[1].legend(title="Método de pago", fontsize=8)
 
 # Gráfico 3: Conductores estrella — rating vs ingresos
-axes[2].scatter(gold_cond["rating_prom"], gold_cond["ingresos_netos"],
-                s=gold_cond["total_viajes"] * 2,
-                c=gold_cond["rating_prom"], cmap="YlOrRd", alpha=0.8, edgecolors="gray")
-for _, row in gold_cond.iterrows():
-    axes[2].annotate(row["id_conductor"],
-                     (row["rating_prom"], row["ingresos_netos"]),
-                     fontsize=7, ha="center", va="bottom")
+if len(gold_cond) > 0:
+    axes[2].scatter(gold_cond["rating_prom"], gold_cond["ingresos_netos"],
+                    s=gold_cond["total_viajes"] * 2,
+                    c=gold_cond["rating_prom"], cmap="YlOrRd", alpha=0.8, edgecolors="gray")
+    for _, row in gold_cond.iterrows():
+        axes[2].annotate(row["id_conductor"],
+                         (row["rating_prom"], row["ingresos_netos"]),
+                         fontsize=7, ha="center", va="bottom")
+else:
+    axes[2].text(0.5, 0.5, "Sin conductores con\nrating > 4.5\n(ver diagnóstico Celda 4)",
+                 ha="center", va="center", fontsize=11, transform=axes[2].transAxes)
 axes[2].set_xlabel("Rating Promedio")
 axes[2].set_ylabel("Ingresos Netos (S/)")
 axes[2].set_title("Conductores Estrella\n(tamaño = # viajes)")
@@ -382,10 +424,12 @@ axes[2].axvline(x=4.7, color="red", linestyle="--", alpha=0.4, label="Top tier (
 axes[2].legend(fontsize=8)
 
 plt.tight_layout()
-plt.savefig("/dbfs/FileStore/taxi_lima/gold/dashboard_taxiapp.png", dpi=150, bbox_inches="tight")
+plt.savefig("taxi_lima/gold/dashboard_taxiapp.png", dpi=150, bbox_inches="tight")
 plt.show()
 print("✅ Dashboard guardado")
 ```
+
+![Celda 5: Dashboard ejecutivo con los 3 gráficos](screenshots/celda5_dashboard.png)
 
 ---
 
@@ -483,16 +527,27 @@ query_alertas.stop()
 print("\n✅ Stream detenido. Sistema de alertas completado.")
 ```
 
+![Celda 6: Sistema de alertas en tiempo real - ciclos 3 y 4 con alertas detectadas](screenshots/celda6_alertas.png)
+
 **Pregunta de reflexión 2:** ¿Qué pasaría si aumentas `rowsPerSecond` a 1000? ¿El sistema de alertas seguiría funcionando igual? ¿Cuál sería el cuello de botella en Databricks Community (1 clúster)?
 
 ```python
-# R2:
+# R2: ¿Qué pasa si subes rowsPerSecond a 1000? ¿Cuál es el cuello de botella?
+Al pasar de 20 a 1000 viajes/segundo, el sistema seguiría funcionando lógicamente, pero el cuello de botella sería la capacidad de cómputo de un solo clúster (en Databricks Community o el entorno local de Colab, hay un único nodo). Con 1000 filas/seg, el procesamiento de las ventanas y las agregaciones podría no completarse antes de que lleguen los siguientes datos, generando retraso acumulado (latencia creciente) y presión de memoria. En producción se resolvería escalando horizontalmente (más nodos) o particionando el stream, algo que un solo clúster no permite.
 ```
 
 **Pregunta de reflexión 3 (conexión con proyecto grupal):** ¿Tu grupo podría aplicar Structured Streaming para detectar patrones en tiempo real en su proyecto? ¿Cuál sería la ventana temporal más adecuada?
 
 ```python
 # R3:
+Sí. Nuestro proyecto (Grupo 3 — pronóstico de demanda hospitalaria en EsSalud) tiene un caso natural para Structured Streaming: el monitoreo en tiempo real de la ocupación de camas por establecimiento. Hoy el pipeline es batch (Prophet predice a 4 semanas), pero la ocupación cambia hora a hora, y nuestra propia arquitectura ya define la regla BRECHA = demanda − oferta → si BRECHA > 0, activar protocolo de contingencia. Esa lógica es idéntica al patrón del laboratorio: agregar en ventana temporal y filtrar por umbral. En vez de rating < 3.5, la alerta sería tasa_ocupacion > 1.0 (sobreocupación, el caso que en enero llegó a 112%), disparando la redistribución de pacientes a otro establecimiento de la red.
+Ventanas temporales según el fenómeno (no habría una sola, sino tres niveles):
+
+Ocupación de camas y emergencias → ventana de 1 hora (deslizante cada 15 min). Es un fenómeno operativo que cambia rápido y requiere reacción inmediata del Director de Hospital.
+Vigilancia de brotes epidemiológicos → ventana de 1 semana, alineada con la semana epidemiológica (SE) que ya usamos como campo en el dataset y con el boletín MINSA. Detectar un brote no tiene sentido en minutos: se necesita acumular casos.
+Clima (SENAMHI) → ventana diaria, porque nuestras hipótesis usan rezagos de 2-3 semanas (temperatura_max_lag2), no lecturas instantáneas.
+
+La conclusión de diseño: la ventana debe coincidir con la velocidad del fenómeno, no con la velocidad del dato. Los datos de camas llegan continuamente, pero un brote de dengue se manifiesta en semanas. Usar una ventana de 30 segundos para vigilancia epidemiológica generaría ruido y falsos positivos; usar una ventana semanal para la ocupación de camas haría inútil la alerta, porque el colapso ya habría ocurrido.
 ```
 
 ---
