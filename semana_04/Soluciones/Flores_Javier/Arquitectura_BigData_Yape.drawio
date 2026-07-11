@@ -1,0 +1,70 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="C4 Container" id="exYJWOSnSAiJkD6ebNQg">
+    <mxGraphModel dx="949" dy="473" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="wL47uTcFSQOcgoxj5ZWD-1" parent="1" style="text;html=1;fontSize=20;fontStyle=1;" value="Arquitectura Big Data de Yape - C4 Container" vertex="1">
+          <mxGeometry height="30" width="420" x="340" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="wL47uTcFSQOcgoxj5ZWD-2" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;" value="Usuarios\n15M" vertex="1">
+          <mxGeometry height="80" width="50" x="50" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="wL47uTcFSQOcgoxj5ZWD-3" parent="1" style="rounded=1;fillColor=#dae8fc;" value="Aplicación Yape&#xa;API + Backend" vertex="1">
+          <mxGeometry height="110" width="180" x="170" y="170" as="geometry" />
+        </mxCell>
+        <mxCell id="wL47uTcFSQOcgoxj5ZWD-4" parent="1" style="shape=cylinder;fillColor=#ffe6cc;" value="&#xa;CockroachDB&#xa;Core Pagos" vertex="1">
+          <mxGeometry height="70" width="160" x="420" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="wL47uTcFSQOcgoxj5ZWD-5" parent="1" style="shape=cylinder;fillColor=#ffe6cc;" value="&#xa;Redis&#xa;Sesiones" vertex="1">
+          <mxGeometry height="70" width="160" x="420" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="wL47uTcFSQOcgoxj5ZWD-6" parent="1" style="shape=cylinder;fillColor=#ffe6cc;" value="&#xa;MongoDB Atlas&#xa;Comercios" vertex="1">
+          <mxGeometry height="70" width="160" x="420" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="wL47uTcFSQOcgoxj5ZWD-7" parent="1" style="rounded=1;fillColor=#d5e8d4;" value="Apache Kafka&#xa;Eventos" vertex="1">
+          <mxGeometry height="70" width="160" x="660" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="wL47uTcFSQOcgoxj5ZWD-8" parent="1" style="shape=cylinder;fillColor=#ffe6cc;" value="&#xa;Neo4j.&#xa;Fraude" vertex="1">
+          <mxGeometry height="70" width="150" x="860" y="90" as="geometry" />
+        </mxCell>
+        <mxCell id="wL47uTcFSQOcgoxj5ZWD-9" parent="1" style="shape=cylinder;fillColor=#ffe6cc;" value="&#xa;Delta Lake (S3)&#xa;Histórico" vertex="1">
+          <mxGeometry height="70" width="170" x="860" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="wL47uTcFSQOcgoxj5ZWD-10" parent="1" style="rounded=1;fillColor=#dae8fc;" value="Databricks&#xa;Spark SQL" vertex="1">
+          <mxGeometry height="70" width="170" x="860" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="wL47uTcFSQOcgoxj5ZWD-11" parent="1" style="rounded=1;fillColor=#dae8fc;" value="Power BI&#xa;Dashboard" vertex="1">
+          <mxGeometry height="70" width="150" x="1110" y="210" as="geometry" />
+        </mxCell>
+        <mxCell id="wL47uTcFSQOcgoxj5ZWD-12" edge="1" parent="1" source="wL47uTcFSQOcgoxj5ZWD-2" target="wL47uTcFSQOcgoxj5ZWD-3" value="HTTPS">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="wL47uTcFSQOcgoxj5ZWD-13" edge="1" parent="1" source="wL47uTcFSQOcgoxj5ZWD-3" target="wL47uTcFSQOcgoxj5ZWD-4" value="SQL/ACID">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="wL47uTcFSQOcgoxj5ZWD-14" edge="1" parent="1" source="wL47uTcFSQOcgoxj5ZWD-3" target="wL47uTcFSQOcgoxj5ZWD-5" value="TTL">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="wL47uTcFSQOcgoxj5ZWD-15" edge="1" parent="1" source="wL47uTcFSQOcgoxj5ZWD-3" target="wL47uTcFSQOcgoxj5ZWD-6" value="CRUD">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="wL47uTcFSQOcgoxj5ZWD-16" edge="1" parent="1" source="wL47uTcFSQOcgoxj5ZWD-4" target="wL47uTcFSQOcgoxj5ZWD-7" value="Eventos">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="wL47uTcFSQOcgoxj5ZWD-17" edge="1" parent="1" source="wL47uTcFSQOcgoxj5ZWD-7" target="wL47uTcFSQOcgoxj5ZWD-8" value="Fraude">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="wL47uTcFSQOcgoxj5ZWD-18" edge="1" parent="1" source="wL47uTcFSQOcgoxj5ZWD-7" target="wL47uTcFSQOcgoxj5ZWD-9" value="Streaming">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="wL47uTcFSQOcgoxj5ZWD-19" edge="1" parent="1" source="wL47uTcFSQOcgoxj5ZWD-9" target="wL47uTcFSQOcgoxj5ZWD-10" value="ETL">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="wL47uTcFSQOcgoxj5ZWD-20" edge="1" parent="1" source="wL47uTcFSQOcgoxj5ZWD-10" target="wL47uTcFSQOcgoxj5ZWD-11" value="Dataset">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,9 @@
+mongodb+srv://<db_username>:<db_password>@bigdataua-flores.uz0npfp.mongodb.net/?appName=BigDataUA-Flores
+
+!pip install pymongo -q
+from pymongo import MongoClient
+client = MongoClient("mongodb+srv://bigdata_user:BigData2026!@bigdataua-flores.uz0npfp.mongodb.net/?appName=BigDataUA-Flores")
+print(client.list_database_names())
+
+
+docker run -d   --name yape-mongo-local   -p 27017:27017   -e MONGO_INITDB_ROOT_USERNAME=admin  -e MONGO_INITDB_ROOT_PASSWORD=yape2026  mongo:7.0
