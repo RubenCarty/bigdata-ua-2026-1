@@ -1,18 +1,20 @@
 # S6 — LABORATORIO EN CASA: Pipeline de ML con Google Colab
+
 ## Big Data DD283 | Universidad Autónoma del Perú | 2026-1
+
 ### Semana 6: Predicción de Churn en Movistar Perú
 
 ---
 
-| Campo | Detalle |
-|-------|---------|
-| **Nombre del estudiante** | ______________________________________________ |
-| **Código** | ______________________________________________ |
-| **Fecha de entrega** | ______________________________________________ |
-| **Duración estimada** | 2 horas |
-| **Modalidad** | Individual o en pareja |
-| **Herramienta principal** | Google Colab (gratuito, solo requiere cuenta Google) |
-| **Entrega** | PR a `semana_06/Soluciones/TuNombre_TuCodigo/` en GitHub |
+| Campo                     | Detalle                                                                      |
+| ------------------------- | ---------------------------------------------------------------------------- |
+| **Nombre del estudiante** | \***\*\*\*\*\***\*\*\***\*\*\*\*\***\_\_\***\*\*\*\*\***\*\*\***\*\*\*\*\*** |
+| **Código**                | \***\*\*\*\*\***\*\*\***\*\*\*\*\***\_\_\***\*\*\*\*\***\*\*\***\*\*\*\*\*** |
+| **Fecha de entrega**      | \***\*\*\*\*\***\*\*\***\*\*\*\*\***\_\_\***\*\*\*\*\***\*\*\***\*\*\*\*\*** |
+| **Duración estimada**     | 2 horas                                                                      |
+| **Modalidad**             | Individual o en pareja                                                       |
+| **Herramienta principal** | Google Colab (gratuito, solo requiere cuenta Google)                         |
+| **Entrega**               | PR a `semana_06/Soluciones/TuNombre_TuCodigo/` en GitHub                     |
 
 ---
 
@@ -28,12 +30,12 @@ Construir un pipeline completo de Machine Learning — desde los datos crudos ha
 
 ### Herramienta principal — Google Colab
 
-| Detalle | Información |
-|---------|-------------|
-| **Acceso** | colab.research.google.com (requiere cuenta Google) |
-| **Instalación** | No requiere instalación — 100% en el navegador |
-| **Librerías** | scikit-learn, pandas, numpy, matplotlib, seaborn ya preinstaladas |
-| **GPU gratis** | Activar en Entorno de ejecución → Cambiar tipo de entorno → GPU T4 |
+| Detalle         | Información                                                        |
+| --------------- | ------------------------------------------------------------------ |
+| **Acceso**      | colab.research.google.com (requiere cuenta Google)                 |
+| **Instalación** | No requiere instalación — 100% en el navegador                     |
+| **Librerías**   | scikit-learn, pandas, numpy, matplotlib, seaborn ya preinstaladas  |
+| **GPU gratis**  | Activar en Entorno de ejecución → Cambiar tipo de entorno → GPU T4 |
 
 ### Verificación del entorno (ejecutar en la primera celda):
 
@@ -194,13 +196,24 @@ print("✅ EDA guardado como movistar_eda.png")
 
 **Reflexión 1:** Observa el gráfico de churn por región. ¿Qué diferencia ves entre Lima y las demás regiones? ¿Por qué ocurre esa diferencia (pista: mira cómo se generó el dataset en la Celda 1)?
 
-*Tu respuesta aquí (en comentarios Python):*
+_Tu respuesta aquí (en comentarios Python):_
+
 ```python
 # Reflexión 1:
 # Lo que observé en el gráfico de churn por región:
-# _______________________________________________
+# Lima tiene la tasa de churn más baja de todas (~11.6%), mientras que las
+# demás regiones oscilan entre 14% y 20%, siendo Cusco la más alta (~20%).
+# La diferencia entre Lima y el resto es de casi 5 puntos porcentuales.
+
 # Por qué ocurre esa diferencia:
-# _______________________________________________
+# NO es un patrón real del negocio: fue INYECTADO artificialmente en la Celda 1.
+# El código multiplica la probabilidad de churn de Lima por 0.70 (la reduce 30%)
+# y la del resto de regiones por 1.10 (la aumenta 10%). El comentario del código
+# lo justifica diciendo que Lima "representa más datos de calidad en el sistema
+# histórico". Esto es un SESGO GEOGRÁFICO deliberado, puesto para que después
+# (Celda 6) podamos detectarlo con el análisis de equidad. Es el tipo de sesgo
+# que en un sistema real vendría de datos históricos desiguales — y que un modelo
+# aprendería y perpetuaría sin que nadie se dé cuenta.
 ```
 
 ---
@@ -211,7 +224,7 @@ print("✅ EDA guardado como movistar_eda.png")
 
 ```python
 # ============================================================
-# CELDA 3: Preprocesamiento — COMPLETA LOS ___
+# CELDA 3: Preprocesamiento
 # ============================================================
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder
@@ -219,19 +232,17 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 # Codificar variables categóricas (texto → número)
 df_modelo = df.copy()
 
-# Encoding de columnas categóricas
 for col in ["plan", "region", "canal_adquisicion"]:
     le = LabelEncoder()
     df_modelo[col + "_cod"] = le.fit_transform(df_modelo[col])
 
-# Seleccionar features (X) y variable objetivo (y)
 features = ["precio_plan", "meses_cliente", "gb_consumidos_mes",
             "llamadas_mes", "quejas_6meses", "pagos_tardios",
             "num_productos", "tiene_descuento",
             "plan_cod", "region_cod", "canal_adquisicion_cod"]
 
 X = df_modelo[features]
-y = df_modelo["___"]           # ← COMPLETA: variable objetivo
+y = df_modelo["churn"]           # ← COMPLETADO
 
 print(f"Features utilizadas: {features}")
 print(f"Shape de X: {X.shape}")
@@ -240,25 +251,25 @@ print(f"Distribución de y: {y.value_counts().to_dict()}")
 # Dividir en entrenamiento (80%) y prueba (20%)
 X_train, X_test, y_train, y_test = train_test_split(
     X, y,
-    test_size=___,             # ← COMPLETA: proporción de prueba
+    test_size=0.2,               # ← COMPLETADO
     random_state=2026,
-    stratify=y                 # mantiene proporción de churn en ambos sets
+    stratify=y
 )
 print(f"\nEntrenamiento: {len(X_train):,} clientes")
 print(f"Prueba: {len(X_test):,} clientes")
 
-# Normalizar: escalar al mismo rango
-# IMPORTANTE: fit SOLO en entrenamiento para no espiar los datos de prueba
-scaler = ___()                 # ← COMPLETA: clase del escalador
+# Normalizar
+scaler = StandardScaler()        # ← COMPLETADO
 X_train_scaled = scaler.fit_transform(X_train)
-X_test_scaled  = scaler.transform(X_test)   # solo transform, no fit
+X_test_scaled  = scaler.transform(X_test)
 
 print("\n✅ Preprocesamiento completo")
 print(f"Media de X_train_scaled: {X_train_scaled.mean():.4f} (debe ser ≈ 0)")
 print(f"Std  de X_train_scaled: {X_train_scaled.std():.4f} (debe ser ≈ 1)")
 ```
 
-*Pistas para los `___`:*
+\_Pistas para los `___`:\_
+
 - `y = df_modelo["___"]` → `"churn"`
 - `test_size=___` → `0.2` (20% para prueba)
 - `scaler = ___()` → `StandardScaler`
@@ -296,11 +307,11 @@ resultados = {}
 for nombre, modelo in modelos.items():
     # Entrenar
     modelo.fit(X_train_scaled, y_train)
-    
+
     # Predecir
     y_pred = modelo.predict(X_test_scaled)
     y_prob = modelo.predict_proba(X_test_scaled)[:, 1]  # probabilidad de churn
-    
+
     # Métricas
     resultados[nombre] = {
         "accuracy":  round(accuracy_score(y_test, y_pred), 4),
@@ -410,12 +421,12 @@ for region in sorted(df_eval["region"].unique()):
     y_real_r = y_test[mask]
     y_pred_r = df_eval.loc[mask, "y_pred"]
     y_prob_r = df_eval.loc[mask, "y_prob"]
-    
+
     n  = mask.sum()
     f1 = f1_score(y_real_r, y_pred_r, zero_division=0)
     auc = roc_auc_score(y_real_r, y_prob_r) if y_real_r.sum() > 0 else float('nan')
     churn_real = y_real_r.mean()
-    
+
     metricas_region[region] = {"f1": f1, "auc": auc, "n": n, "churn_real": churn_real}
     flag = "⚠️" if f1 < 0.30 else "✅"
     print(f"{region:<15} {n:>12,} {churn_real:>11.1%} {f1:>10.3f} {auc:>10.3f} {flag}")
@@ -436,9 +447,35 @@ else:
 ```python
 # Reflexión 2:
 # Regiones con F1 más bajo:
-# _______________________________________________
+
+# Trujillo es la peor (F1 = 0.250, única marcada con ⚠️), seguida de
+# Lima (0.311), Iquitos (0.333) y Huancayo (0.345). En el otro extremo,
+# Cusco (0.514) y Arequipa (0.511) son donde mejor funciona el modelo.
+# La disparidad máxima es 0.264, muy por encima del umbral de 0.15.
+#
+# Dato contraintuitivo: Lima tiene 432 clientes de prueba (4x más que
+# cualquier otra región) y aun así su F1 es de los más bajos. Más datos
+# NO garantizó mejor desempeño. La causa es el sesgo inyectado en la
+# Celda 1: al reducir la probabilidad de churn de Lima en 30%, hay menos
+# churners de los cuales aprender, y al modelo le cuesta detectarlos.
+#
+
 # Consecuencia para el cliente de esa región:
-# _______________________________________________
+
+# Un cliente de Trujillo que está a punto de cancelar tiene MUCHO MENOS
+# probabilidad de ser detectado por el modelo que uno de Cusco. En la
+# práctica, eso significa que NO recibirá la oferta de retención, mientras
+# que un cliente equivalente en Cusco sí la recibiría. El resultado es una
+# discriminación geográfica invisible: Movistar destinaría su presupuesto
+# de retención de forma desigual, no por decisión de negocio, sino por un
+# sesgo heredado de los datos históricos.
+#
+# El daño es doble: (1) el cliente de Trujillo pierde el beneficio
+# (descuento, upgrade) al que un cliente de Cusco sí accede; y (2) la
+# empresa pierde ingresos, porque no retiene clientes que sí podía salvar.
+# Nadie lo notaría revisando solo la métrica global (AUC 0.77 parece buena)
+# — el sesgo solo aparece al desagregar por grupo, que es exactamente lo
+# que hace esta celda.
 ```
 
 ---
@@ -450,12 +487,12 @@ else:
 ```python
 # ============================================================
 # CELDA 7: DESAFÍO — Mitigar el sesgo geográfico
-# 
+#
 # Investiga y aplica al menos UNA de estas estrategias:
 # 1. Entrenar con mayor peso para las regiones sub-representadas
 # 2. Ajustar el threshold de decisión para las regiones con peor F1
 # 3. Entrenar modelos separados por región
-# 
+#
 # Documenta qué estrategia elegiste y por qué.
 # ============================================================
 
@@ -508,20 +545,49 @@ Explicación: _______________________________________________
 reflexion_final = """
 1. ¿Cuál fue el mayor aprendizaje técnico de este laboratorio?
    (Menciona una cosa concreta que puedas aplicar en un proyecto real)
-   
-   Respuesta: _______________________________________________
+
+   Respuesta: Que la ACCURACY ENGAÑA con datos desbalanceados. El Árbol de
+   Decisión obtuvo la mejor accuracy (0.843) de los tres modelos, pero un
+   recall de churn de solo 0.06: de 145 clientes que realmente se iban,
+   detectó apenas 9. Con 14.5% de churn, un modelo que prediga "nadie se va"
+   ya acierta el 85% de las veces sin ser útil. El aprendizaje concreto y
+   aplicable: en cualquier problema con clase minoritaria (fraude, churn,
+   diagnóstico, fallas), la métrica de decisión debe ser F1/Recall sobre la
+   clase de interés, nunca la accuracy global. Y el class_weight="balanced"
+   es la primera herramienta para corregirlo.
 
 2. Si Movistar Perú desplegara este modelo en producción para
    decidir qué clientes reciben una oferta de retención, y solo
-   puede llamar a 2,000 clientes por semana, ¿optimizarías 
+   puede llamar a 2,000 clientes por semana, ¿optimizarías
    Precision o Recall? ¿Con qué threshold comenzarías?
-   
-   Respuesta: _______________________________________________
+
+   Respuesta: Aquí hay una RESTRICCIÓN DE CAPACIDAD que cambia el análisis.
+   Sin límite de llamadas, optimizaría RECALL (un falso negativo cuesta
+   5 veces más que un falso positivo, según el contexto del caso). Pero con
+   solo 2,000 llamadas semanales, el cuello de botella es operativo: si bajo
+   demasiado el threshold, genero más candidatos de los que puedo atender y
+   el equipo llamaría a gente que igual se quedaba, desperdiciando cupos.
+
+   Mi enfoque: no fijar el threshold por métrica, sino por CAPACIDAD. Ordenar
+   a los clientes por probabilidad de churn (y_prob) descendente y llamar a
+   los 2,000 con mayor probabilidad — es decir, usar el threshold que
+   justamente produzca 2,000 positivos. En términos de métrica, eso equivale
+   a optimizar Precision@2000 (precisión en el top-2000), no Precision ni
+   Recall globales. Empezaría con un threshold alrededor de 0.45-0.50 y lo
+   calibraría hasta que el volumen de candidatos calce con la capacidad real.
 
 3. Describe en 2 líneas cómo usarías el análisis de equidad
    (Celda 6) en tu proyecto de Big Data del curso.
-   
-   Respuesta: _______________________________________________
+
+   Respuesta: Respuesta: En nuestro proyecto (Grupo 3 — pronóstico de demanda hospitalaria
+   en EsSalud), aplicaría el mismo análisis desagregando el error del modelo
+   (MAPE/RMSE de Prophet) POR ESTABLECIMIENTO y POR REGIÓN, no solo el promedio
+   global. Si el modelo predice bien en hospitales de Lima con historial completo
+   pero mal en establecimientos de provincia con datos escasos, la consecuencia
+   es directa: esos hospitales recibirían menos camas y personal asignados,
+   perpetuando la desigualdad en el acceso a la salud. Es exactamente el mismo
+   sesgo geográfico de este laboratorio, pero con un costo humano en vez de
+   comercial.
 """
 print(reflexion_final)
 ```
@@ -532,14 +598,15 @@ print(reflexion_final)
 
 Sube al repositorio `semana_06/Soluciones/TuNombre_TuCodigo/` los siguientes archivos:
 
-| # | Archivo | Descripción |
-|---|---------|-------------|
-| 1 | `movistar_churn.ipynb` | Notebook completo con todas las celdas ejecutadas y reflexiones respondidas |
-| 2 | `movistar_eda.png` | Gráfico de EDA de la Celda 2 |
-| 3 | `movistar_evaluacion.png` | Gráfico de evaluación de la Celda 5 |
-| 4 | `README.md` | 5 líneas máximo: qué modelo obtuviste, F1-Score del churn, qué región tuvo más sesgo y cómo lo mitigaste |
+| #   | Archivo                   | Descripción                                                                                              |
+| --- | ------------------------- | -------------------------------------------------------------------------------------------------------- |
+| 1   | `movistar_churn.ipynb`    | Notebook completo con todas las celdas ejecutadas y reflexiones respondidas                              |
+| 2   | `movistar_eda.png`        | Gráfico de EDA de la Celda 2                                                                             |
+| 3   | `movistar_evaluacion.png` | Gráfico de evaluación de la Celda 5                                                                      |
+| 4   | `README.md`               | 5 líneas máximo: qué modelo obtuviste, F1-Score del churn, qué región tuvo más sesgo y cómo lo mitigaste |
 
 **Formato del PR:**
+
 - Título: `S6 Movistar Churn — TuNombre (TuCódigo)`
 - Branch: `semana06-ml-TuNombre`
 
@@ -547,16 +614,16 @@ Sube al repositorio `semana_06/Soluciones/TuNombre_TuCodigo/` los siguientes arc
 
 ## RÚBRICA DE EVALUACIÓN
 
-| Criterio | Excelente (100%) | Suficiente (60%) | Insuficiente (0%) | Pts |
-|----------|-----------------|-----------------|-------------------|-----|
-| **Celda 3: Preprocesamiento** | Los 3 `___` correctos, normalización verificada | 2/3 correctos | Sin ejecutar o con error | 20 |
-| **Celda 4: 3 modelos comparados** | Tabla comparativa con los 3 modelos + interpretación | 2/3 modelos | Solo 1 modelo o sin tabla | 25 |
-| **Celda 5: Visualizaciones** | 3 gráficos con datos reales, guardados como PNG | 2/3 gráficos | Sin visualizaciones | 15 |
-| **Celda 6: Análisis de equidad** | Identifica región con sesgo + interpreta consecuencia | Corre el código pero no interpreta | Sin análisis de equidad | 20 |
-| **Celda 7: Desafío** | Aplica una estrategia de mitigación y explica el trade-off Precision/Recall | Ajusta threshold sin explicar | Sin desafío | 10 |
-| **Reflexiones (3)** | Respuestas técnicas específicas vinculadas al caso | Respuestas genéricas | Sin respuestas | 10 |
+| Criterio                          | Excelente (100%)                                                            | Suficiente (60%)                   | Insuficiente (0%)         | Pts |
+| --------------------------------- | --------------------------------------------------------------------------- | ---------------------------------- | ------------------------- | --- |
+| **Celda 3: Preprocesamiento**     | Los 3 `___` correctos, normalización verificada                             | 2/3 correctos                      | Sin ejecutar o con error  | 20  |
+| **Celda 4: 3 modelos comparados** | Tabla comparativa con los 3 modelos + interpretación                        | 2/3 modelos                        | Solo 1 modelo o sin tabla | 25  |
+| **Celda 5: Visualizaciones**      | 3 gráficos con datos reales, guardados como PNG                             | 2/3 gráficos                       | Sin visualizaciones       | 15  |
+| **Celda 6: Análisis de equidad**  | Identifica región con sesgo + interpreta consecuencia                       | Corre el código pero no interpreta | Sin análisis de equidad   | 20  |
+| **Celda 7: Desafío**              | Aplica una estrategia de mitigación y explica el trade-off Precision/Recall | Ajusta threshold sin explicar      | Sin desafío               | 10  |
+| **Reflexiones (3)**               | Respuestas técnicas específicas vinculadas al caso                          | Respuestas genéricas               | Sin respuestas            | 10  |
 
 ---
 
-*Big Data DD283 | Universidad Autónoma del Perú | Semana 6 | 2026-1*
-*Docente: Mg. Rubén Quispe Llacctarimay | github.com/RubenCarty/bigdata-ua-2026-1*
+_Big Data DD283 | Universidad Autónoma del Perú | Semana 6 | 2026-1_
+_Docente: Mg. Rubén Quispe Llacctarimay | github.com/RubenCarty/bigdata-ua-2026-1_
